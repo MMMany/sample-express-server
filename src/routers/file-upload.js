@@ -1,13 +1,13 @@
-import { join } from "path";
-import { existsSync, mkdirSync } from "fs";
-import multer, { diskStorage } from "multer";
-import { getSecretKey, parseBearerToken } from "./auth.js";
-import { Router } from "express";
-import jwt from "jsonwebtoken";
+const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
+const auth = require("./auth");
+const Router = require("express").Router;
+const jwt = require("jsonwebtoken");
 
 const apiFileUpload = Router();
 
-const storage = diskStorage({
+const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     console.log("destination: ", uploadPath);
     cb(null, uploadPath);
@@ -38,10 +38,13 @@ apiFileUpload.post("/upload", (req, res) => {
   });
 });
 
-export default apiFileUpload;
-
-export const uploadPath = (() => {
-  const path = join(process.cwd(), "uploads");
-  if (!existsSync(path)) mkdirSync(path);
-  return path;
+const uploadPath = (() => {
+  const ret = path.join(process.cwd(), "uploads");
+  if (!fs.existsSync(ret)) fs.mkdirSync(ret);
+  return ret;
 })();
+
+module.exports = {
+  router: apiFileUpload,
+  uploadPath,
+}

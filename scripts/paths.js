@@ -1,7 +1,7 @@
 "use strict";
 
-import path from "path";
-import fs from "fs";
+const path = require("path");
+const fs = require("fs");
 
 // Make sure any symlinks in the project folder are resolved:
 // https://github.com/facebook/create-react-app/issues/637
@@ -10,7 +10,7 @@ const resolveApp = (relativePath) => path.resolve(appDirectory, relativePath);
 
 const buildPath = process.env.BUILD_PATH || "build";
 
-export const moduleFileExtensions = ["web.mjs", "mjs", "web.js", "js", "web.ts", "ts", "json"];
+const moduleFileExtensions = ["js", "cjs", "json"];
 
 // Resolve file paths in the same order as webpack
 const resolveModule = (resolveFn, filePath) => {
@@ -24,7 +24,7 @@ const resolveModule = (resolveFn, filePath) => {
 };
 
 // config after eject: we're in ./config/
-export default {
+module.exports = {
   dotenv: resolveApp(".env"),
   appPath: resolveApp("."),
   appBuild: resolveApp(buildPath),
@@ -43,3 +43,5 @@ export default {
   swSrc: resolveModule(resolveApp, "src/service-worker"),
   publicUrlOrPath: "",
 };
+
+module.exports.moduleFileExtensions = moduleFileExtensions;

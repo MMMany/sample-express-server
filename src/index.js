@@ -1,16 +1,18 @@
-import "./dotenv.js";
-import express from "express";
-import apiFileDownload from "./routers/file-download.js";
-import apiFileUpload from "./routers/file-upload.js";
-import apiAuth from "./routers/auth.js";
+require("./dotenv");
+const express = require("express");
+const apiFileDownload = require("./routers/file-download");
+const apiFileUpload = require("./routers/file-upload");
+const apiAuth = require("./routers/auth");
 
 const app = express();
 const PORT = process.env.PORT;
 
 const API_VERSION = "v1";
 
+app.use(express.json());
+
 [apiFileDownload, apiFileUpload, apiAuth].forEach((api) => {
-  app.use(`/${API_VERSION}`, api);
+  app.use(`/${API_VERSION}`, api.router);
 });
 
 app.get("/", (req, res) => {

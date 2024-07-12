@@ -1,8 +1,10 @@
 "use strict";
 
-import fs from "fs";
-import path from "path";
-import paths from "./paths.js";
+const fs = require("fs");
+const path = require("path");
+const paths = require("./paths");
+
+delete require.cache[require.resolve("./paths")];
 
 const NODE_ENV = process.env.NODE_ENV;
 if (!NODE_ENV) {
@@ -25,12 +27,10 @@ const dotenvFiles = [
 // that have already been set.  Variable expansion is supported in .env files.
 // https://github.com/motdotla/dotenv
 // https://github.com/motdotla/dotenv-expand
-import { expand as dotenvExpand } from "dotenv-expand";
-import dotenv from "dotenv";
 dotenvFiles.forEach((dotenvFile) => {
   if (fs.existsSync(dotenvFile)) {
-    dotenvExpand(
-      dotenv.config({
+    require("dotenv-expand").expand(
+      require("dotenv").config({
         path: dotenvFile,
       })
     );
@@ -53,7 +53,7 @@ process.env.NODE_PATH = (process.env.NODE_PATH || "")
   .map((folder) => path.resolve(appDirectory, folder))
   .join(path.delimiter);
 
-export function getClientEnvironment(publicUrl) {
+function getClientEnvironment(publicUrl) {
   const raw = Object.keys(process.env).reduce(
     (env, key) => {
       env[key] = process.env[key];
@@ -77,3 +77,5 @@ export function getClientEnvironment(publicUrl) {
 
   return { raw, stringified };
 }
+
+module.exports = getClientEnvironment;

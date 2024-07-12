@@ -1,10 +1,10 @@
 {
   "name": "sample_express",
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
     "start": "cross-env NODE_ENV=development nodemon src/index.js",
-    "build": "node scripts/build-script.js"
+    "build": "node scripts/build-script.js build",
+    "build:clear": "node scripts/build-script.js build --clear-cache"
   },
   "author": "",
   "license": "ISC",
@@ -28,13 +28,13 @@
     "cross-env": "^7.0.3",
     "cross-spawn": "^7.0.3",
     "fs-extra": "^11.2.0",
-    "gzip-size": "^7.0.0",
+    "gzip-size": "^6.0.0",
     "nodemon": "^3.1.4",
     "react-dev-utils": "^12.0.1",
     "recursive-readdir": "^2.2.3",
     "resolve": "^1.22.8",
     "source-map-loader": "^5.0.0",
-    "strip-ansi": "^7.1.0",
+    "strip-ansi": "^6.0.1",
     "terser-webpack-plugin": "^5.3.10",
     "webpack": "^5.92.1",
     "webpack-cli": "^5.1.4"

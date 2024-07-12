@@ -7,17 +7,22 @@ process.on("unhandledRejection", (err) => {
   throw err;
 });
 
-import spawn from "cross-spawn";
-import path from "path";
-import { fileURLToPath } from "url";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const spawn = require("cross-spawn");
+const args = process.argv.slice(2);
+
+const scriptIndex = args.findIndex((x) => x === "build" || x === "clear");
+const script = scriptIndex === -1 ? args[0] : args[scriptIndex];
+const nodeArgs = scriptIndex > 0 ? args.slice(0, scriptIndex) : [];
 
 // Build
-const result = spawn.sync(process.execPath, [path.resolve(__dirname, "build.js")], {
-  stdio: "inherit",
-  env: { ...process.env, NODE_ENV: "production" },
-});
+const result = spawn.sync(
+  process.execPath,
+  nodeArgs.concat(require.resolve("./" + script)).concat(args.slice(scriptIndex + 1)),
+  {
+    stdio: "inherit",
+    env: { ...process.env, NODE_ENV: "production" },
+  }
+);
 if (result.signal) {
   if (result.signal === "SIGKILL") {
     console.log(

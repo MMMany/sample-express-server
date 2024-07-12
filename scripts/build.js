@@ -12,21 +12,25 @@ process.on("unhandledRejection", (err) => {
 });
 
 // Ensure environment variables are read.
-import "./env.js";
+require("./env");
 
-import path from "path";
-import chalk from "chalk";
-import fs from "fs-extra";
-import * as bfj from "bfj";
-import webpack from "webpack";
-import configFactory from "../webpack.config.js";
-import paths from "./paths.js";
-import checkRequiredFiles from "react-dev-utils/checkRequiredFiles.js";
-import formatWebpackMessages from "react-dev-utils/formatWebpackMessages.js";
-import { measureFileSizesBeforeBuild, printFileSizesAfterBuild } from "./utils/FileSizeReporter.js";
-import printBuildError from "react-dev-utils/printBuildError.js";
+const path = require("path");
+const chalk = require("react-dev-utils/chalk");
+const fs = require("fs-extra");
+const bfj = require("bfj");
+const webpack = require("webpack");
+const configFactory = require("./webpack.config");
+const paths = require("./paths");
+const checkRequiredFiles = require("react-dev-utils/checkRequiredFiles");
+const formatWebpackMessages = require("react-dev-utils/formatWebpackMessages");
+const FileSizeReporter = require("./FileSizeReporter");
+const printBuildError = require("react-dev-utils/printBuildError");
+const recursive = require("recursive-readdir");
+const gzipSize = require("gzip-size").sync;
+const filesize = require("filesize");
 
-const useYarn = fs.existsSync(paths.yarnLockFile);
+const measureFileSizesBeforeBuild = FileSizeReporter.measureFileSizesBeforeBuild;
+const printFileSizesAfterBuild = FileSizeReporter.printFileSizesAfterBuild;
 
 // These sizes are pretty large. We'll warn for bundles exceeding them.
 const WARN_AFTER_BUNDLE_GZIP_SIZE = 512 * 1024;
@@ -39,12 +43,53 @@ if (!checkRequiredFiles([paths.appIndexJs])) {
 
 const argv = process.argv.slice(2);
 const writeStatsJson = argv.indexOf("--stats") !== -1;
+const clearCache = argv.indexOf("--clear-cache") !== -1;
 
 // Generate configuration
 const config = configFactory("production");
 
+// for clear cache
+function checkClearCache(buildFolder) {
+  function measureFileSize(directoryPath) {
+    return new Promise((resolve) => {
+      recursive(directoryPath, (err, fileNames) => {
+        let sizes = 0;
+        if (!err && fileNames) {
+          fileNames.forEach((fileName) => {
+            sizes += gzipSize(fileName);
+          });
+        }
+        resolve(sizes);
+      });
+    });
+  }
+
+  if (clearCache) {
+    let cachePath = path.join(paths.appNodeModules, ".cache");
+    return measureFileSize(cachePath).then((fileSize) => {
+      console.log(
+        "Clear " +
+          chalk.dim(path.join(path.basename(paths.appNodeModules), ".cache")) +
+          " : " +
+          chalk.green(filesize(fileSize))
+      );
+      fs.emptydirSync(cachePath);
+      console.log();
+      return buildFolder;
+    });
+  } else {
+    return new Promise((resolve) => {
+      resolve(buildFolder);
+    });
+  }
+}
+
 // Build
-measureFileSizesBeforeBuild(paths.appBuild)
+checkClearCache(paths.appBuild)
+  .then((buildFolder) => {
+    return measureFileSizesBeforeBuild(buildFolder);
+  })
+// measureFileSizesBeforeBuild(paths.appBuild)
   .then((previousFileSizes) => {
     // Remove all content but keep the directory so that
     // if you're in it, you don't end up in Trash

@@ -1,32 +1,59 @@
-import jwt from "jsonwebtoken";
-import { readFileSync } from "fs";
-import { Router } from "express";
+const jwt = require("jsonwebtoken");
+const fs = require("fs");
+const Router = require("express").Router;
 
-export function getSecretKey() {
-  return readFileSync(process.env.PRIVATE_KEY_PATH, "utf8");
+function getSecretKey() {
+  return fs.readFileSync(process.env.PRIVATE_KEY_PATH, "utf8");
 }
 
-export function parseBearerToken(req) {
+function parseBearerToken(req) {
   const authHeader = req.headers["authorization"];
   return authHeader && authHeader.split(" ")[1];
+}
+
+function debug(req, message) {
+  console.debug(`${req.url} : ${message}`);
 }
 
 const apiAuth = Router();
 
 apiAuth.get("/generate-token", (req, res) => {
-  const token = jwt.sign({}, getSecretKey(), { expiresIn: "1h" });
-  res.json({ token });
+  try {
+    const requester = req.body.requester;
+    if (!requester || requester.trim().length === 0) {
+      debug(req, "There is no 'requester' in body")
+      res.status(400).send("Bad Request");
+      return;
+    }
+    const token = jwt.sign({}, getSecretKey(), { expiresIn: "1d" });
+    res.json({ token });
+    debug(req, `Generate new token for '${requester}'`)
+  } catch (err) {
+    console.error(err);
+    res.status(400).send("Bad Request");
+  }
 });
 
 apiAuth.get("/token-verify", (req, res) => {
   const token = parseBearerToken(req);
 
-  if (!token) return res.status(400).send("Token is required");
+  if (!token) {
+    debug(req, "Token is empty");
+    return res.status(400).send("Bad Request");
+  }
 
   jwt.verify(token, getSecretKey(), (err) => {
-    if (err) return res.status(401).send("Invalid or expired token");
+    if (err) {
+      debug(req, "Invalid token");
+      return res.status(401).send("Invalid token");
+    }
     res.status(200).send("Token is valid");
+    debug(req, "Token is valid");
   });
 });
 
-export default apiAuth;
+module.exports = {
+  router: apiAuth,
+  getSecretKey,
+  parseBearerToken,
+};

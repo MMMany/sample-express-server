@@ -7,31 +7,24 @@
 
 "use strict";
 
-import { readFileSync } from "fs";
-import { join, basename, dirname, extname, sep } from "path";
-import chalk from "chalk";
-const { yellow, dim, cyan, red, green } = chalk;
-import filesize from "filesize";
-import recursive from "recursive-readdir";
-import stripAnsi from "strip-ansi";
-import { gzipSizeSync } from "gzip-size";
+const fs = require("fs");
+const path = require("path");
+const chalk = require("react-dev-utils/chalk");
+const filesize = require("filesize");
+const recursive = require("recursive-readdir");
+const stripAnsi = require("strip-ansi");
+const gzipSize = require("gzip-size").sync;
 
 function canReadAsset(asset) {
   return (
-    /\.(js|cjs|mjs|ts|json)$/.test(asset) &&
+    /\.(js|cjs|json)$/.test(asset) &&
     !/service-worker\.js/.test(asset) &&
     !/precache-manifest\.[0-9a-f]+\.js/.test(asset)
   );
 }
 
 // Prints a detailed summary of build files.
-export function printFileSizesAfterBuild(
-  webpackStats,
-  previousSizeMap,
-  buildFolder,
-  maxBundleGzipSize,
-  maxChunkGzipSize
-) {
+function printFileSizesAfterBuild(webpackStats, previousSizeMap, buildFolder, maxBundleGzipSize, maxChunkGzipSize) {
   var root = previousSizeMap.root;
   var sizes = previousSizeMap.sizes;
   var assets = (webpackStats.stats || [webpackStats])
@@ -40,13 +33,13 @@ export function printFileSizesAfterBuild(
         .toJson({ all: false, assets: true })
         .assets.filter((asset) => canReadAsset(asset.name))
         .map((asset) => {
-          var fileContents = readFileSync(join(root, asset.name));
-          var size = gzipSizeSync(fileContents);
+          var fileContents = fs.readFileSync(path.join(root, asset.name));
+          var size = gzipSize(fileContents);
           var previousSize = sizes[removeFileNameHash(root, asset.name)];
           var difference = getDifferenceLabel(size, previousSize);
           return {
-            folder: join(basename(buildFolder), dirname(asset.name)),
-            name: basename(asset.name),
+            folder: path.join(path.basename(buildFolder), path.dirname(asset.name)),
+            name: path.basename(asset.name),
             size: size,
             sizeLabel: filesize(size) + (difference ? " (" + difference + ")" : ""),
           };
@@ -69,16 +62,22 @@ export function printFileSizesAfterBuild(
     var isMainBundle = asset.name.indexOf("main.") === 0;
     var maxRecommendedSize = isMainBundle ? maxBundleGzipSize : maxChunkGzipSize;
     var isLarge = maxRecommendedSize && asset.size > maxRecommendedSize;
-    if (isLarge && extname(asset.name) === ".js") {
+    if (isLarge && path.extname(asset.name) === ".js") {
       suggestBundleSplitting = true;
     }
-    console.log("  " + (isLarge ? yellow(sizeLabel) : sizeLabel) + "  " + dim(asset.folder + sep) + cyan(asset.name));
+    console.log(
+      "  " +
+        (isLarge ? chalk.yellow(sizeLabel) : sizeLabel) +
+        "  " +
+        chalk.dim(asset.folder + path.sep) +
+        chalk.cyan(asset.name)
+    );
   });
   if (suggestBundleSplitting) {
     console.log();
-    console.log(yellow("The bundle size is significantly larger than recommended."));
-    console.log(yellow("Consider reducing it with code splitting: https://goo.gl/9VhYWB"));
-    console.log(yellow("You can also analyze the project dependencies: https://goo.gl/LeUzfb"));
+    console.log(chalk.yellow("The bundle size is significantly larger than recommended."));
+    console.log(chalk.yellow("Consider reducing it with code splitting: https://goo.gl/9VhYWB"));
+    console.log(chalk.yellow("You can also analyze the project dependencies: https://goo.gl/LeUzfb"));
   }
 }
 
@@ -96,25 +95,25 @@ function getDifferenceLabel(currentSize, previousSize) {
   var difference = currentSize - previousSize;
   var fileSize = !Number.isNaN(difference) ? filesize(difference) : 0;
   if (difference >= FIFTY_KILOBYTES) {
-    return red("+" + fileSize);
+    return chalk.red("+" + fileSize);
   } else if (difference < FIFTY_KILOBYTES && difference > 0) {
-    return yellow("+" + fileSize);
+    return chalk.yellow("+" + fileSize);
   } else if (difference < 0) {
-    return green(fileSize);
+    return chalk.green(fileSize);
   } else {
     return "";
   }
 }
 
-export function measureFileSizesBeforeBuild(buildFolder) {
+function measureFileSizesBeforeBuild(buildFolder) {
   return new Promise((resolve) => {
     recursive(buildFolder, (err, fileNames) => {
       var sizes;
       if (!err && fileNames) {
         sizes = fileNames.filter(canReadAsset).reduce((memo, fileName) => {
-          var contents = readFileSync(fileName);
+          var contents = fs.readFileSync(fileName);
           var key = removeFileNameHash(buildFolder, fileName);
-          memo[key] = gzipSizeSync(contents);
+          memo[key] = gzipSize(contents);
           return memo;
         }, {});
       }
@@ -125,3 +124,6 @@ export function measureFileSizesBeforeBuild(buildFolder) {
     });
   });
 }
+
+module.exports.printFileSizesAfterBuild = printFileSizesAfterBuild;
+module.exports.measureFileSizesBeforeBuild = measureFileSizesBeforeBuild;
