@@ -17,9 +17,6 @@
 .nfs*
 
 ### Node ###
-# Build output
-build
-
 # Logs
 logs
 *.log
