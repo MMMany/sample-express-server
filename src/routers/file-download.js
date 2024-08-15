@@ -1,26 +1,31 @@
 const fs = require("fs");
-const auth = require("./auth");
-const Router = require("express").Router;
-const jwt = require("jsonwebtoken");
+const router = require("express").Router();
+const logger = require("../utils/logger");
+const { authVerify } = require("./auth");
+const { NotFoundError } = require("../utils/errors");
+const { uploadPath } = require("./file-upload");
+const path = require("path");
 
-const apiFileDownload = Router();
+router.get("/download", (req, res) => {
+  logger.info(req.method, req.originalUrl);
 
-apiFileDownload.get("/download", (req, res) => {
-  const token = auth.parseBearerToken(req);
-
-  if (!token) return res.status(400).send("Token is required");
-
-  jwt.verify(token, auth.getSecretKey(), (err) => {
-    if (err) return res.status(401).send("Invalid or expired token");
-
-    const filePath = req.query.file;
-
-    if (!fs.existsSync(filePath)) return res.status(404).send("File not found");
-
-    res.download(filePath);
-  });
+  authVerify(req)
+    .then(({ token, refreshed }) => {
+      if (refreshed) {
+        res.cookie("xt-access-token", token);
+      }
+      const filePath = path.join(uploadPath, req.query.file);
+      if (!fs.existsSync(filePath)) {
+        throw new NotFoundError("file not found");
+      }
+      res.download(filePath);
+    })
+    .catch((err) => {
+      logger.error(err.message);
+      res.sendStatus(err.status ?? 500);
+    });
 });
 
 module.exports = {
-  router: apiFileDownload,
-}
+  router,
+};

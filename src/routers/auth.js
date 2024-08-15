@@ -1,62 +1,100 @@
 const jwt = require("jsonwebtoken");
 const fs = require("fs");
-const Router = require("express").Router;
+const router = require("express").Router();
 const path = require("path");
 const homedir = require("os").homedir();
+const logger = require("../utils/logger");
+const { BadRequestError, UnauthorizedError } = require("../utils/errors");
 
-function getSecretKey() {
+const getSecretKey = () => {
   // return fs.readFileSync(process.env.PRIVATE_KEY_PATH, "utf8");
   return fs.readFileSync(path.join(homedir, ".ssh", process.env.PRIVATE_KEY_NAME));
-}
+};
 
-function parseBearerToken(req) {
-  const authHeader = req.headers["authorization"];
-  return authHeader && authHeader.split(" ")[1];
-}
+const generateToken = (payload, expiresIn) => {
+  return jwt.sign({ ...payload }, getSecretKey(), { expiresIn });
+};
 
-function debug(req, message) {
-  console.debug(`${req.url} : ${message}`);
-}
+const parseToken = async (req) => {
+  const authHeader = req.headers.authorization;
+  return authHeader?.split(" ")[1] ?? req.cookies["xt-access-token"];
+};
 
-const apiAuth = Router();
-
-apiAuth.get("/generate-token", (req, res) => {
+const verify = async (token) => {
   try {
-    const requester = req.body.requester;
-    if (!requester || requester.trim().length === 0) {
-      debug(req, "There is no 'requester' in body");
-      res.status(400).send("Bad Request");
-      return;
-    }
-    const token = jwt.sign({}, getSecretKey(), { expiresIn: "1d" });
-    res.json({ token });
-    debug(req, `Generate new token for '${requester}'`);
+    jwt.verify(token, getSecretKey());
+    return true;
   } catch (err) {
-    console.error(err);
-    res.status(400).send("Bad Request");
+    if (err.message === "jwt expired") {
+      return false;
+    } else if (err.message === "invalid token") {
+      return new UnauthorizedError(err.message);
+    }
+    throw err;
+  }
+};
+
+const authVerify = async (req) => {
+  let token = await parseToken(req);
+  let refreshed = false;
+  if (!(await verify(token))) {
+    // check refresh token
+    if (await verify(req.cookies["xt-refresh-token"])) {
+      token = generateToken("1h");
+      refreshed = true;
+    }
+  }
+  return { token, refreshed };
+};
+
+router.get("/generate-token", (req, res) => {
+  logger.info(req.method, req.originalUrl);
+
+  try {
+    const requester = req.query.requester;
+    if (!requester || requester.trim().length === 0) {
+      logger.debug("there is no 'requester' in body");
+      throw new BadRequestError();
+    }
+    const payload = {
+      user: requester,
+      t: Date.now(),
+    };
+    const access = generateToken(payload, "1h");
+    const refresh = generateToken(payload, "1d");
+    res.cookie("xt-access-token", access);
+    res.cookie("xt-refresh-token", refresh);
+    res.json({ access, refresh });
+    logger.debug(`generate new token for '${requester}'`);
+  } catch (err) {
+    logger.error(err.message);
+    res.sendStatus(err.status ?? 500);
   }
 });
 
-apiAuth.get("/token-verify", (req, res) => {
-  const token = parseBearerToken(req);
+router.get("/token-verify", (req, res) => {
+  logger.info(req.method, req.originalUrl);
 
-  if (!token) {
-    debug(req, "Token is empty");
-    return res.status(400).send("Bad Request");
-  }
-
-  jwt.verify(token, getSecretKey(), (err) => {
-    if (err) {
-      debug(req, "Invalid token");
-      return res.status(401).send("Invalid token");
-    }
-    res.status(200).send("Token is valid");
-    debug(req, "Token is valid");
-  });
+  authVerify(req)
+    .then(({ token, refreshed }) => {
+      if (refreshed) {
+        logger.debug("token refreshed");
+        res.cookie("xt-access-token", token);
+        res.send("token refreshed");
+      } else {
+        logger.debug("token is valid");
+        res.sendStatus(200);
+      }
+    })
+    .catch((err) => {
+      logger.error(err.message);
+      res.sendStatus(err.status ?? 500);
+    });
 });
 
 module.exports = {
-  router: apiAuth,
-  getSecretKey,
-  parseBearerToken,
+  router,
+  parseToken,
+  verify,
+  authVerify,
 };

@@ -17,8 +17,3 @@ dotenvFiles.forEach((file) => {
     );
   }
 });
-
-console.log(dotenvFiles);
-console.log(process.env.NODE_ENV);
-console.log(process.env.PRIVATE_KEY_PATH);
-console.log(process.env.PORT);

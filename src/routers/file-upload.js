@@ -1,42 +1,10 @@
 const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
-const auth = require("./auth");
-const Router = require("express").Router;
-const jwt = require("jsonwebtoken");
-
-const apiFileUpload = Router();
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    console.log("destination: ", uploadPath);
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    console.log("filename: ", `${Date.now()}-${file.originalname}`);
-    cb(null, `${Date.now()}-${file.originalname}`);
-  },
-});
-const upload = multer({ storage });
-
-apiFileUpload.post("/upload", (req, res) => {
-  const token = parseBearerToken(req);
-
-  if (!token) return res.status(400).send("Token is required");
-
-  jwt.verify(token, getSecretKey(), (err) => {
-    if (err) return res.status(401).send("Invalid or expired token");
-
-    upload.single("file")(req, res, (err) => {
-      if (err) return res.status(500).send("File upload failed");
-
-      console.log("Uploaded file: ", req.file);
-      console.log("Data: ", req.body);
-
-      res.status(200).send("File uploaded successfully");
-    });
-  });
-});
+const router = require("express").Router();
+const logger = require("../utils/logger");
+const timestamp = require("../utils/timestamp");
+const { authVerify } = require("./auth");
 
 const uploadPath = (() => {
   const ret = path.join(process.cwd(), "uploads");
@@ -44,7 +12,46 @@ const uploadPath = (() => {
   return ret;
 })();
 
+const storage = multer.diskStorage({
+  destination: (_, file, cb) => {
+    logger.debug(JSON.stringify(file));
+    logger.debug("destination: ", uploadPath);
+    cb(null, uploadPath);
+  },
+  filename: (_, file, cb) => {
+    const datetime = timestamp().split(".")[0];
+    logger.debug(JSON.stringify(file));
+    logger.debug("filename: ", `${datetime}-${file.originalname}`);
+    cb(null, `${datetime}-${file.originalname}`);
+  },
+});
+const upload = multer({ storage }).single("file");
+
+router.post("/upload", (req, res) => {
+  logger.info(req.method, req.originalUrl);
+
+  authVerify(req)
+    .then(({ token, refreshed }) => {
+      if (refreshed) {
+        res.cookie("xt-access-token", token);
+      }
+      upload(req, res, (err) => {
+        if (err) {
+          logger.error("failed file upload");
+          throw err;
+        }
+        logger.debug("uploaded file :", req.file);
+        logger.debug("data :", req.body);
+        res.sendStatus(200);
+      });
+    })
+    .catch((err) => {
+      logger.error(err.message);
+      res.sendStatus(err.status ?? 500);
+    });
+});
+
 module.exports = {
-  router: apiFileUpload,
+  router,
   uploadPath,
-}
+};
