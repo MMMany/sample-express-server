@@ -1,61 +1,90 @@
 const _ = require("lodash");
-const { AutoEncryptionLoggerLevel } = require("mongodb");
+const { TEST_STATE } = require("../constants");
+const logger = require("../utils/logger");
 
 const SAMPLE_DATA = {
   TestVersion: {
-    id: "v1",
-    desc: "It is test version",
-    TestCategory: [
+    title: "v1",
+    state: TEST_STATE.NOT_TESTED,
+    TestSuite: [
       {
-        id: "cat-1",
-        desc: "It is test category 1",
-        TestSuite: [
+        title: "suite-1",
+        state: TEST_STATE.NOT_TESTED,
+        TestCategory: [
           {
-            id: "suite-1",
-            desc: "It is test suite 1",
-            TestCases: [
+            title: "cat-1",
+            state: TEST_STATE.NOT_TESTED,
+            TestCase: [
               {
-                id: "tc-1",
-                desc: "It is tc 1",
+                title: "tc-1",
+                state: TEST_STATE.NOT_TESTED,
+                TestUnit: [
+                  {
+                    title: "unit-1",
+                    state: TEST_STATE.NOT_TESTED,
+                  },
+                  {
+                    title: "unit-2",
+                    state: TEST_STATE.NOT_TESTED,
+                  },
+                  {
+                    title: "unit-3",
+                    state: TEST_STATE.NOT_TESTED,
+                  },
+                ],
               },
               {
-                id: "tc-2",
-                desc: "It is tc 2",
+                title: "tc-2",
+                state: TEST_STATE.NOT_TESTED,
+                TestUnit: {
+                  title: "unit-1",
+                  state: TEST_STATE.NOT_TESTED,
+                },
               },
               {
-                id: "tc-3",
-                desc: "It is tc 3",
+                title: "tc-3",
+                state: TEST_STATE.SKIP,
               },
             ],
           },
           {
-            id: "suite-2",
-            desc: "It is test suite 2",
-            TestCases: {
-              id: "tc-4",
-              desc: "It is tc 4",
+            title: "cat-2",
+            state: TEST_STATE.NOT_TESTED,
+            TestCase: {
+              title: "tc-4",
+              state: TEST_STATE.NOT_TESTED,
+              TestUnit: {
+                title: "unit-1",
+                state: TEST_STATE.NOT_TESTED,
+              },
             },
           },
         ],
       },
       {
-        id: "cat-2",
-        desc: "It is test category 2",
-        TestSuite: {
-          id: "suite-1",
-          desc: "It is test suite 1",
-          TestCases: [
+        title: "suite-2",
+        state: TEST_STATE.NOT_TESTED,
+        TestCategory: {
+          title: "cat-1",
+          state: TEST_STATE.NOT_TESTED,
+          TestCase: [
             {
-              id: "tc-11",
-              desc: "It is tc 11",
+              title: "tc-11",
+              state: TEST_STATE.SKIP,
             },
             {
-              id: "tc-22",
-              desc: "It is tc 22",
-            },
-            {
-              id: "tc-33",
-              desc: "It is tc 33",
+              title: "tc-22",
+              state: TEST_STATE.NOT_TESTED,
+              TestUnit: [
+                {
+                  title: "unit-11",
+                  state: TEST_STATE.NOT_TESTED,
+                },
+                {
+                  title: "unit-22",
+                  state: TEST_STATE.NOT_TESTED,
+                },
+              ],
             },
           ],
         },
@@ -64,36 +93,80 @@ const SAMPLE_DATA = {
   },
 };
 
-const createValue = (id, desc) => {
-  return { id, desc };
+const asArray = (it) => {
+  if (!it) return [];
+  return _.isArray(it) ? it : [it];
 };
 
-const convertData = () => {
-  const root = SAMPLE_DATA.TestVersion;
-  const { id, desc } = root;
-  const rootValue = createValue(id, desc);
+const parseTreeToArray = (tree) => {
+  const origin = _.cloneDeep(tree);
 
   const ret = [];
 
-  const asArray = (data) => {
-    return !_.isArray(data) ? [data] : data;
-  };
-
-  for (const cat of asArray(root.TestCategory)) {
-    const { id, desc } = cat;
-    const catValue = createValue(id, desc);
-    for (const suite of asArray(cat.TestSuite)) {
-      const { id, desc } = suite;
-      const suiteValue = createValue(id, desc);
-      for (const tc of asArray(suite.TestCases)) {
-        const { id, desc } = tc;
-        ret.push({
-          id,
-          desc,
-          TestVersion: rootValue,
-          TestCategory: catValue,
-          TestSuite: suiteValue,
-        });
+  const rootArr = asArray(origin.TestVersion);
+  for (const [idx, ver] of rootArr.entries()) {
+    const verValue = {
+      id: `id::${idx}`,
+      title: ver.title,
+      state: ver.state,
+    };
+    if (!ver.TestSuite || ver.state === TEST_STATE.SKIP) {
+      ret.push(verValue);
+      continue;
+    }
+    const suiteArr = asArray(ver.TestSuite);
+    for (const [idx, suite] of suiteArr.entries()) {
+      const suiteValue = {
+        id: verValue.id + `-${idx}`,
+        title: suite.title,
+        state: suite.state,
+      };
+      if (!suite.TestCategory || suite.state === TEST_STATE.SKIP) {
+        suiteValue.TestVersion = verValue;
+        ret.push(suiteValue);
+        continue;
+      }
+      const categoryArr = asArray(suite.TestCategory);
+      for (const [idx, cat] of categoryArr.entries()) {
+        const catValue = {
+          id: suiteValue.id + `-${idx}`,
+          title: cat.title,
+          state: cat.state,
+        };
+        if (!cat.TestCase || cat.state === TEST_STATE.SKIP) {
+          catValue.TestVersion = verValue;
+          catValue.TestSuite = suiteValue;
+          ret.push(catValue);
+          continue;
+        }
+        const testCaseArr = asArray(cat.TestCase);
+        for (const [idx, tc] of testCaseArr.entries()) {
+          const tcValue = {
+            id: catValue.id + `-${idx}`,
+            title: tc.title,
+            state: tc.state,
+          };
+          if (!tc.TestUnit || tc.state === TEST_STATE.SKIP) {
+            tcValue.TestVersion = verValue;
+            tcValue.TestSuite = suiteValue;
+            tcValue.TestCategory = catValue;
+            ret.push(tcValue);
+            continue;
+          }
+          const unitArr = asArray(tc.TestUnit);
+          for (const [idx, unit] of unitArr.entries()) {
+            const unitValue = {
+              id: tcValue.id + `-${idx}`,
+              title: unit.title,
+              state: unit.state,
+              TestVersion: verValue,
+              TestSuite: suiteValue,
+              TestCategory: catValue,
+              TestCase: tcValue,
+            };
+            ret.push(unitValue);
+          }
+        }
       }
     }
   }
@@ -101,39 +174,93 @@ const convertData = () => {
   return ret;
 };
 
-const SAMPLE_DATA_2 = convertData();
+const parseArrayToTree = (arr) => {
+  if (_.isEmpty(arr)) throw new Error("empty arr");
 
-const convertJson = (data) => {
+  const origin = _.cloneDeep(arr);
+
   // check
-  const version = data[0].TestVersion;
-  for (const tc of data) {
-    if (tc.TestVersion.id !== version.id) {
-      throw new Error("invalid data");
-    }
+  const version = origin[0].TestVersion;
+  if (!version) throw new Error("invalid version");
+  for (const it of origin) {
+    if (it.TestVersion.id !== version.id) throw new Error("version corrupted");
   }
 
-  // convert
+  // parse
   const ret = {
     TestVersion: {
       id: version.id,
-      desc: version.desc,
-      TestCategory: [],
+      title: version.title,
+      state: version.state,
+      TestSuite: [],
     },
   };
-  for (const tc of data) {
-    let category = ret.TestVersion.TestCategory?.find((v) => v.id === tc.TestCategory.id);
-    if (!category) {
-      category = _.cloneDeep(tc.TestCategory);
-      category.TestSuite = [];
-      ret.TestVersion.TestCategory.push(category);
-    }
-    let suite = category.TestSuite.find((v) => v.id === tc.TestSuite.id);
+
+  for (const it of origin) {
+    let suite = ret.TestVersion.TestSuite?.find((v) => v.id === it.TestSuite?.id);
     if (!suite) {
-      suite = _.cloneDeep(tc.TestSuite);
-      suite.TestCases = [];
-      category.TestSuite.push(suite);
+      if (!it.TestSuite) {
+        ret.TestVersion.TestSuite.push(
+          _.cloneDeep({
+            id: it.id,
+            title: it.title,
+            state: it.state,
+          })
+        );
+        continue;
+      }
+      suite = _.cloneDeep(it.TestSuite);
+      ret.TestVersion.TestSuite.push(suite);
+      if (suite.state === TEST_STATE.SKIP) {
+        continue;
+      }
+      suite.TestCategory = [];
     }
-    suite.TestCases.push(_.cloneDeep({ id: tc.id, desc: tc.desc }));
+    let category = suite.TestCategory.find((v) => v.id === it.TestCategory?.id);
+    if (!category) {
+      if (!it.TestCategory) {
+        suite.TestCategory.push(
+          _.cloneDeep({
+            id: it.id,
+            title: it.title,
+            state: it.state,
+          })
+        );
+        continue;
+      }
+      category = _.cloneDeep(it.TestCategory);
+      suite.TestCategory.push(category);
+      if (category.state === TEST_STATE.SKIP) {
+        continue;
+      }
+      category.TestCase = [];
+    }
+    let tc = category.TestCase.find((v) => v.id === it.TestCase?.id);
+    if (!tc) {
+      if (!it.TestCase) {
+        category.TestCase.push(
+          _.cloneDeep({
+            id: it.id,
+            title: it.title,
+            state: it.state,
+          })
+        );
+        continue;
+      }
+      tc = _.cloneDeep(it.TestCase);
+      category.TestCase.push(tc);
+      if (tc.state === TEST_STATE.SKIP) {
+        continue;
+      }
+      tc.TestUnit = [];
+    }
+    tc.TestUnit.push(
+      _.cloneDeep({
+        id: it.id,
+        title: it.title,
+        state: it.state,
+      })
+    );
   }
 
   return ret;
@@ -141,6 +268,6 @@ const convertJson = (data) => {
 
 module.exports = {
   SAMPLE_DATA,
-  SAMPLE_DATA_2,
-  convertJson,
+  parseTreeToArray,
+  parseArrayToTree,
 };

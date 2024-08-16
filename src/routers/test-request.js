@@ -1,7 +1,7 @@
 const router = require("express").Router();
 const logger = require("../utils/logger");
 const { authVerify } = require("./auth");
-const { SAMPLE_DATA_2: SAMPLE_DATA, convertJson } = require("../dummy/sample-data");
+const { SAMPLE_DATA, parseTreeToArray, parseArrayToTree } = require("../dummy/sample-data");
 const { BadRequestError } = require("../utils/errors");
 const _ = require("lodash");
 
@@ -13,8 +13,9 @@ router.get("/tc-list", (req, res) => {
       if (refreshed) {
         res.cookie("xt-access-token", token);
       }
-      logger.debug("TC length :", SAMPLE_DATA.length);
-      res.json(JSON.stringify(SAMPLE_DATA));
+      const parsed = parseTreeToArray(SAMPLE_DATA);
+      logger.debug("TC length :", parsed.length);
+      res.json(JSON.stringify(parsed));
     })
     .catch((err) => {
       logger.error(err.message);
@@ -40,18 +41,18 @@ router.post("/select-tc", (req, res) => {
       if (length !== data.length) {
         throw new BadRequestError("invalid length and data");
       }
-      const findItems = data.map(({ id }) => SAMPLE_DATA.find((tc) => tc.id === id));
+      const parsed = parseTreeToArray(SAMPLE_DATA);
+      const findItems = data.map(({ id }) => parsed.find((tc) => tc.id === id));
       if (findItems.length !== length) {
         throw new BadRequestError("invalid tc");
       }
       logger.debug(data);
       logger.debug(findItems.length);
-      const converted = convertJson(findItems);
-      // logger.debug(JSON.stringify(converted, null, 2));
+      const converted = parseArrayToTree(findItems);
       res.json(converted);
     })
     .catch((err) => {
-      logger.error(err.message);
+      logger.error(err);
       res.sendStatus(err.status ?? 500);
     });
 });

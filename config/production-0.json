@@ -1,0 +1,7 @@
+{
+  "AppConfig": {
+    "PORT": 4040,
+    "PRIVATE_KEY_NAME": "sample_private.key",
+    "SESSION_DB_NAME": "db_sessions"
+  }
+}
