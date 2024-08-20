@@ -38,7 +38,7 @@ const parseToken = async (req) => {
 const verify = async (token) => {
   try {
     const decoded = jwt.verify(token, getSecretKey());
-    logger.debug(decoded);
+    // logger.debug(decoded);
     return { ...decoded, expired: false };
   } catch (err) {
     if (err.message === "jwt expired") {
