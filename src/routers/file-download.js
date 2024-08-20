@@ -1,14 +1,12 @@
 const fs = require("fs");
 const router = require("express").Router();
-const logger = require("../utils/logger");
+const logger = require('winston').loggers.get('was-logger');
 const { authVerify } = require("./auth");
 const { NotFoundError } = require("../utils/errors");
 const { uploadPath } = require("./file-upload");
 const path = require("path");
 
 router.get("/download", (req, res) => {
-  logger.info(req.method, req.originalUrl);
-
   authVerify(req)
     .then(({ token, refreshed }) => {
       if (refreshed) {

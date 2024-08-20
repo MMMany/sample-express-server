@@ -1,16 +1,21 @@
+// configuration
 const config = require("config");
+require('./utils/logger');
+
+// packages
 const express = require("express");
 const apiFileDownload = require("./routers/file-download").router;
 const apiFileUpload = require("./routers/file-upload").router;
 const apiAuth = require("./routers/auth").router;
 const apiTestRequest = require("./routers/test-request").router;
-const apiAppLogging = require('./routers/app-logging').router;
-const logger = require("./utils/logger");
+const apiAppLogging = require("./routers/app-logging").router;
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const csrf = require("csurf");
 const session = require("express-session");
 const MongoStore = require("connect-mongo");
+const mongoose = require("mongoose");
+const logger = require("winston").loggers.get('was-logger');
 
 const app = express();
 
@@ -25,6 +30,10 @@ store.on("error", (err) => {
   logger.error(err);
 });
 
+app.use((req, res, next) => {
+  logger.info(`${req.method} ${req.originalUrl}`);
+  next();
+});
 app.use(express.json());
 app.use(cookieParser());
 app.use(
@@ -54,17 +63,26 @@ apiList.forEach((api) => {
 });
 
 app.get("/test", (req, res) => {
-  logger.info(req.method, req.originalUrl);
   res.send("Hello " + JSON.stringify(req.session));
 });
 
 app.all("*", (req, res) => {
-  logger.warn(`invalid access (${req.method} ${req.path})`);
-  logger.debug(app.mountpath);
+  logger.warn(`invalid access (${req.method} ${req.originalUrl})`);
   res.sendStatus(404);
 });
 
 const PORT = config.get("AppConfig.PORT");
-app.listen(PORT, () => {
-  logger.debug(`Server is running on port ${PORT}`);
-});
+if (process.env.NODE_ENV === "development") {
+  mongoose.set("debug", true);
+}
+mongoose
+  .connect("mongodb://localhost/db_data")
+  .then(() => {
+    logger.debug("database connected");
+    app.listen(PORT, () => {
+      logger.debug(`server is running on ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    logger.error(err.message);
+  });

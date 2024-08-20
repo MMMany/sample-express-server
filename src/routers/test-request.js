@@ -1,20 +1,18 @@
 const router = require("express").Router();
-const logger = require("../utils/logger");
+const logger = require('winston').loggers.get('was-logger');
 const { authVerify } = require("./auth");
 const { SAMPLE_DATA, parseTreeToArray, parseArrayToTree } = require("../dummy/sample-data");
 const { BadRequestError } = require("../utils/errors");
 const _ = require("lodash");
 
 router.get("/tc-list", (req, res) => {
-  logger.info(req.method, req.originalUrl);
-
   authVerify(req)
     .then(({ token, refreshed }) => {
       if (refreshed) {
         res.cookie("xt-access-token", token);
       }
       const parsed = parseTreeToArray(SAMPLE_DATA);
-      logger.debug("TC length :", parsed.length);
+      logger.debug(`TC length: ${parsed.length}`);
       res.json(JSON.stringify(parsed));
     })
     .catch((err) => {
@@ -24,8 +22,6 @@ router.get("/tc-list", (req, res) => {
 });
 
 router.post("/select-tc", (req, res) => {
-  logger.log(req.method, req.originalUrl);
-
   authVerify(req)
     .then(({ token, refreshed }) => {
       if (refreshed) {

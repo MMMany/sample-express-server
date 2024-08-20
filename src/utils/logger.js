@@ -1,29 +1,39 @@
-const timestamp = require("./timestamp");
+const winston = require("winston");
+const _ = require("lodash");
 
-const info = (...argv) => {
-  console.info(`[${timestamp()}][I]`, ...argv);
+const { combine, timestamp, label, printf, colorize, errors } = winston.format;
+
+const minimizeLevel = winston.format((info) => {
+  return { ...info, level: info.level.toUpperCase()[0] };
+});
+
+const logFormats = (name) => {
+  return combine(
+    label({ label: name }),
+    errors({ stack: process.env.NODE_ENV !== "production" }),
+    minimizeLevel(),
+    colorize(),
+    timestamp({ format: "YYYY-MM-DD HH:mm:ss.SSS" }),
+    printf(({ level, label, message, timestamp, stack }) => {
+      return "".concat(
+        `[${timestamp}]`,
+        `[${label}]`,
+        `[${level}]`,
+        ` ${_.isString(message) ? message : JSON.stringify(message)}`,
+        stack ? `\n${stack}` : ""
+      );
+    })
+  );
 };
 
-const debug = (...argv) => {
-  console.debug(`[${timestamp()}][D]`, ...argv);
-};
+winston.loggers.add("was-logger", {
+  level: process.env.NODE_ENV === "production" ? "info" : "debug",
+  format: logFormats("WAS"),
+  transports: [new winston.transports.Console()],
+});
 
-const warn = (...argv) => {
-  console.warn(`[${timestamp()}][W]`, ...argv);
-};
-
-const error = (...argv) => {
-  console.error(`[${timestamp()}][E]`, ...argv);
-};
-
-const log = (...argv) => {
-  console.log(`[${timestamp()}][L]`, ...argv);
-};
-
-module.exports = {
-  info,
-  debug,
-  warn,
-  error,
-  log,
-};
+winston.loggers.add("app-logger", {
+  level: process.env.NODE_ENV === "production" ? "info" : "debug",
+  format: logFormats("React"),
+  transports: [new winston.transports.Console()],
+});

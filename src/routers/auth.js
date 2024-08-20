@@ -4,7 +4,7 @@ const fs = require("fs");
 const router = require("express").Router();
 const path = require("path");
 const homedir = require("os").homedir();
-const logger = require("../utils/logger");
+const logger = require('winston').loggers.get('was-logger');
 const { BadRequestError, UnauthorizedError } = require("../utils/errors");
 
 const getSecretKey = () => {
@@ -38,7 +38,6 @@ const parseToken = async (req) => {
 const verify = async (token) => {
   try {
     const decoded = jwt.verify(token, getSecretKey());
-    // logger.debug(decoded);
     return { ...decoded, expired: false };
   } catch (err) {
     if (err.message === "jwt expired") {
@@ -87,8 +86,6 @@ const authVerify = async (req) => {
  * });
  */
 router.get("/generate-token", (req, res) => {
-  logger.info(req.method, req.originalUrl);
-
   try {
     const requester = req.query.requester;
     if (!requester || requester.trim().length === 0) {
@@ -112,8 +109,6 @@ router.get("/generate-token", (req, res) => {
 });
 
 router.get("/token-verify", (req, res) => {
-  logger.info(req.method, req.originalUrl);
-
   authVerify(req)
     .then(({ token, refreshed }) => {
       if (refreshed) {

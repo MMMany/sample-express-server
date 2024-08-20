@@ -2,7 +2,7 @@ const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
 const router = require("express").Router();
-const logger = require("../utils/logger");
+const logger = require('winston').loggers.get('was-logger');
 const timestamp = require("../utils/timestamp");
 const { authVerify } = require("./auth");
 
@@ -15,21 +15,19 @@ const uploadPath = (() => {
 const storage = multer.diskStorage({
   destination: (_, file, cb) => {
     logger.debug(JSON.stringify(file));
-    logger.debug("destination: ", uploadPath);
+    logger.debug(`destination: ${uploadPath}`);
     cb(null, uploadPath);
   },
   filename: (_, file, cb) => {
     const datetime = timestamp().split(".")[0];
     logger.debug(JSON.stringify(file));
-    logger.debug("filename: ", `${datetime}-${file.originalname}`);
+    logger.debug(`filename: ${datetime}-${file.originalname}`);
     cb(null, `${datetime}-${file.originalname}`);
   },
 });
 const upload = multer({ storage }).single("file");
 
 router.post("/upload", (req, res) => {
-  logger.info(req.method, req.originalUrl);
-
   authVerify(req)
     .then(({ token, refreshed }) => {
       if (refreshed) {
@@ -40,8 +38,8 @@ router.post("/upload", (req, res) => {
           logger.error("failed file upload");
           throw err;
         }
-        logger.debug("uploaded file :", req.file);
-        logger.debug("data :", req.body);
+        logger.debug(`uploaded file: ${req.file}`)
+        logger.debug(`data: ${req.body}`);
         res.sendStatus(200);
       });
     })
