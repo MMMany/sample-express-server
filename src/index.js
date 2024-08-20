@@ -1,6 +1,6 @@
 // configuration
 const config = require("config");
-require('./utils/logger');
+require("./utils/logger");
 
 // packages
 const express = require("express");
@@ -15,9 +15,25 @@ const csrf = require("csurf");
 const session = require("express-session");
 const MongoStore = require("connect-mongo");
 const mongoose = require("mongoose");
-const logger = require("winston").loggers.get('was-logger');
+const logger = require("winston").loggers.get("was-logger");
 
 const app = express();
+
+const User = require("./models/User");
+app.get("/test", (req, res) => {
+  User.create({
+    name: "james",
+    email: "james@example.com",
+  })
+    .then((result) => {
+      logger.debug(result);
+      res.sendStatus(200);
+    })
+    .catch((err) => {
+      logger.error(err);
+      res.sendStatus(400);
+    });
+});
 
 const store = MongoStore.create({
   mongoUrl: "mongodb://localhost",
@@ -60,10 +76,6 @@ app.use((req, res, next) => {
 const apiList = [apiFileDownload, apiFileUpload, apiAuth, apiTestRequest, apiAppLogging];
 apiList.forEach((api) => {
   app.use("/v1", api);
-});
-
-app.get("/test", (req, res) => {
-  res.send("Hello " + JSON.stringify(req.session));
 });
 
 app.all("*", (req, res) => {
