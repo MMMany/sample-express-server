@@ -4,11 +4,6 @@ require("./utils/logger");
 
 // packages
 const express = require("express");
-const apiFileDownload = require("./routers/file-download").router;
-const apiFileUpload = require("./routers/file-upload").router;
-const apiAuth = require("./routers/auth").router;
-const apiTestRequest = require("./routers/test-request").router;
-const apiAppLogging = require("./routers/app-logging").router;
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const csrf = require("csurf");
@@ -18,22 +13,6 @@ const mongoose = require("mongoose");
 const logger = require("winston").loggers.get("was-logger");
 
 const app = express();
-
-const User = require("./models/User");
-app.get("/test", (req, res) => {
-  User.create({
-    name: "james",
-    email: "james@example.com",
-  })
-    .then((result) => {
-      logger.debug(result);
-      res.sendStatus(200);
-    })
-    .catch((err) => {
-      logger.error(err);
-      res.sendStatus(400);
-    });
-});
 
 const store = MongoStore.create({
   mongoUrl: "mongodb://localhost",
@@ -73,10 +52,23 @@ app.use((req, res, next) => {
   next();
 });
 
-const apiList = [apiFileDownload, apiFileUpload, apiAuth, apiTestRequest, apiAppLogging];
+const apiList = [
+  require("./routers/file-download").router,
+  require("./routers/file-upload").router,
+  require("./routers/auth").router,
+  require("./routers/test-request").router,
+  require("./routers/app-logging").router,
+  require("./routers/notice").router,
+];
 apiList.forEach((api) => {
   app.use("/v1", api);
 });
+
+// ===== test =====
+app.get("/test", (req, res) => {
+  res.sendStatus(200);
+});
+// ===== test =====
 
 app.all("*", (req, res) => {
   logger.warn(`invalid access (${req.method} ${req.originalUrl})`);

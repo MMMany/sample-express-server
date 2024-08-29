@@ -1,69 +1,71 @@
 "use strict";
 
-// 400 ~ 499
-class BadRequestError extends Error {
+// base class
+class HttpBaseError extends Error {
   constructor(message) {
-    super(message ?? "Bad Request");
-    this.name = "BadRequestError";
-    this.status = 400;
-  }
-}
-
-class UnauthorizedError extends Error {
-  constructor(message) {
-    super(message ?? "Unauthorized");
-    this.name = "UnauthorizedError";
-    this.status = 401;
-  }
-}
-
-class ForbiddenError extends Error {
-  constructor(message) {
-    super(message ?? "Forbidden");
-    this.name = "ForbiddenError";
-    this.status = 403;
-  }
-}
-
-class NotFoundError extends Error {
-  constructor(message) {
-    super(message ?? "Not Found");
-    this.name = "NotFoundError";
-    this.status = 404;
-  }
-}
-
-class RequestTimeoutError extends Error {
-  constructor(message) {
-    super(message ?? "Request Timeout");
-    this.name = "RequestTimeoutError";
-    this.status = 408;
-  }
-}
-
-// 500 ~ 599
-class InternalServerError extends Error {
-  constructor(message) {
-    super(message ?? "Internal Server Error");
-    this.name = "InternalServerError";
-    this.status = 500;
-  }
-}
-
-class NotImplementedError extends Error {
-  constructor(message) {
-    super(message ?? "Not Implemented");
-    this.name = "NotImplementedError";
-    this.status = 501;
+    super(message ?? "unknown");
+    this.name = this.constructor.name;
+    this.status = -1;
   }
 }
 
 module.exports = {
-  BadRequestError,
-  UnauthorizedError,
-  ForbiddenError,
-  NotFoundError,
-  RequestTimeoutError,
-  InternalServerError,
-  NotImplementedError,
+  // 200 ~ 299
+  NoContentError: class NoContentError extends HttpBaseError {
+    constructor(message) {
+      super(message ?? "No Content");
+      this.status = 204;
+    }
+  },
+
+  // 400 ~ 499
+  BadRequestError: class BadRequestError extends HttpBaseError {
+    constructor(message) {
+      super(message ?? "Bad Request");
+      this.status = 400;
+    }
+  },
+
+  UnauthorizedError: class UnauthorizedError extends HttpBaseError {
+    constructor(message) {
+      super(message ?? "Unauthorized");
+      this.status = 401;
+    }
+  },
+
+  ForbiddenError: class ForbiddenError extends HttpBaseError {
+    constructor(message) {
+      super(message ?? "Forbidden");
+      this.status = 403;
+    }
+  },
+
+  NotFoundError: class NotFoundError extends HttpBaseError {
+    constructor(message) {
+      super(message ?? "Not Found");
+      this.status = 404;
+    }
+  },
+
+  RequestTimeoutError: class RequestTimeoutError extends HttpBaseError {
+    constructor(message) {
+      super(message ?? "Request Timeout");
+      this.status = 408;
+    }
+  },
+
+  // 500 ~ 599
+  InternalServerError: class InternalServerError extends HttpBaseError {
+    constructor(message) {
+      super(message ?? "Internal Server Error");
+      this.status = 500;
+    }
+  },
+
+  NotImplementedError: class NotImplementedError extends HttpBaseError {
+    constructor(message) {
+      super(message ?? "Not Implemented");
+      this.status = 501;
+    }
+  },
 };
