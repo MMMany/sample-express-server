@@ -1,17 +1,21 @@
-const config = require('config');
-const jwt = require("jsonwebtoken");
-const fs = require("fs");
-const router = require("express").Router();
-const path = require("path");
-const homedir = require("os").homedir();
-const logger = require('winston').loggers.get('was-logger');
-const { BadRequestError, UnauthorizedError } = require("../utils/errors");
+import config from "config";
+import jwt from "jsonwebtoken";
+import fs from "fs";
+import { Router } from "express";
+import path from "path";
+import { homedir } from "os";
+import winston from "winston";
+import { BadRequestError, UnauthorizedError } from "../utils/errors";
+
+const router = Router();
+const home = homedir();
+const logger = winston.loggers.get("was-logger");
 
 const getSecretKey = () => {
   // if you want use private in project, use it.
   // return fs.readFileSync("./sample_private.key", "utf8");
   // return fs.readFileSync(path.join(homedir, ".ssh", process.env.PRIVATE_KEY_NAME));
-  return fs.readFileSync(path.join(homedir, '.ssh', config.get('AppConfig.PRIVATE_KEY_NAME')));
+  return fs.readFileSync(path.join(home, ".ssh", config.get("AppConfig.PRIVATE_KEY_NAME")));
 };
 
 const generateToken = (payload, expiresIn) => {
@@ -38,10 +42,12 @@ const parseToken = async (req) => {
 const verify = async (token) => {
   try {
     const decoded = jwt.verify(token, getSecretKey());
+    // @ts-ignore
     return { ...decoded, expired: false };
   } catch (err) {
     if (err.message === "jwt expired") {
       return {
+        // @ts-ignore
         ...jwt.verify(token, getSecretKey(), { ignoreExpiration: true }),
         expired: true,
       };
@@ -52,7 +58,7 @@ const verify = async (token) => {
   }
 };
 
-const authVerify = async (req) => {
+export const authVerify = async (req) => {
   let token = req.session["xt-access-token"];
   if (!token) throw new UnauthorizedError();
   let refreshed = false;
@@ -88,6 +94,7 @@ const authVerify = async (req) => {
 router.get("/generate-token", (req, res) => {
   try {
     const requester = req.query.requester;
+    // @ts-ignore
     if (!requester || requester.trim().length === 0) {
       logger.debug("there is no 'requester' in body");
       throw new BadRequestError();
@@ -126,7 +133,4 @@ router.get("/token-verify", (req, res) => {
     });
 });
 
-module.exports = {
-  router,
-  authVerify,
-};
+export default router;

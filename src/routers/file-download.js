@@ -12,6 +12,7 @@ router.get("/download", (req, res) => {
       if (refreshed) {
         res.cookie("xt-access-token", token);
       }
+      // @ts-ignore
       const filePath = path.join(uploadPath, req.query.file);
       if (!fs.existsSync(filePath)) {
         throw new NotFoundError("file not found");
@@ -24,6 +25,4 @@ router.get("/download", (req, res) => {
     });
 });
 
-module.exports = {
-  router,
-};
+module.exports = router;

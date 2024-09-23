@@ -1,16 +1,18 @@
 // configuration
-const config = require("config");
-require("./utils/logger");
+import config from "config";
+import "./utils/logger";
 
 // packages
-const express = require("express");
-const cors = require("cors");
-const cookieParser = require("cookie-parser");
-const csrf = require("csurf");
-const session = require("express-session");
-const MongoStore = require("connect-mongo");
-const mongoose = require("mongoose");
-const logger = require("winston").loggers.get("was-logger");
+import express from "express";
+import cors from "cors";
+import cookieParser from "cookie-parser";
+import csrf from "csurf";
+import session from "express-session";
+import MongoStore from "connect-mongo";
+import mongoose from "mongoose";
+import winston from "winston";
+
+const logger = winston.loggers.get("was-logger");
 
 const app = express();
 
@@ -52,15 +54,21 @@ app.use((req, res, next) => {
   next();
 });
 
-const apiList = [
-  require("./routers/file-download").router,
-  require("./routers/file-upload").router,
-  require("./routers/auth").router,
-  require("./routers/test-request").router,
-  require("./routers/app-logging").router,
-  require("./routers/notice").router,
-];
-apiList.forEach((api) => {
+// const apiList = [
+//   require("./routers/file-download").router,
+//   require("./routers/file-upload").router,
+//   require("./routers/auth").router,
+//   require("./routers/test-request").router,
+//   require("./routers/app-logging").router,
+//   require("./routers/notice").router,
+// ];
+// apiList.forEach((api) => {
+//   app.use("/v1", api);
+// });
+import AuthApi from "./routers/auth";
+import NoticeApi from "./routers/notice";
+
+[AuthApi, NoticeApi].forEach((api) => {
   app.use("/v1", api);
 });
 
@@ -79,14 +87,26 @@ const PORT = config.get("AppConfig.PORT");
 if (process.env.NODE_ENV === "development") {
   mongoose.set("debug", true);
 }
+
 mongoose
   .connect("mongodb://localhost/db_data")
-  .then(() => {
+  .then(async () => {
     logger.debug("database connected");
+
     app.listen(PORT, () => {
-      logger.debug(`server is running on ${PORT}`);
+      logger.debug(`server started on ${PORT}`);
     });
   })
   .catch((err) => {
     logger.error(err.message);
   });
+
+const closeMongoDB = async () => {
+  await mongoose.connection.close();
+  logger.debug("database disconnected");
+  process.exit(0);
+};
+
+["SIGINT", "SIGTERM", "SIGQUIT", "SIGHUP"].forEach((sig) => {
+  process.on(sig, closeMongoDB);
+});

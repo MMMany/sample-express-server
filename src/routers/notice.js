@@ -1,11 +1,13 @@
-const router = require("express").Router();
-const Notice = require("../models/Notice");
-const logger = require("winston").loggers.get("was-logger");
-const { NoContentError, BadRequestError, RequestTimeoutError } = require("../utils/errors");
-const _ = require("lodash");
-const { Mutex, withTimeout } = require("async-mutex");
-const mongoose = require("mongoose");
+import { Router } from "express";
+import Notice from "../models/Notice";
+import winston from "winston";
+import { BadRequestError, RequestTimeoutError } from "../utils/errors";
+import _ from "lodash";
+import { Mutex, withTimeout } from "async-mutex";
+import mongoose from "mongoose";
 
+const router = Router();
+const logger = winston.loggers.get("was-logger");
 const mutex = withTimeout(new Mutex(), 30 * 1000, new RequestTimeoutError());
 
 const parseNoticeId = (id) => {
@@ -247,4 +249,4 @@ router.delete("/notice/:noticeId", (req, res) => {
     });
 });
 
-module.exports = { router };
+export default router;
