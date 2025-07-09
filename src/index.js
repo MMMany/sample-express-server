@@ -1,8 +1,8 @@
-if (process.env.NODE_ENV !== 'test') {
-  require('./dotenv');
-}
+require('./dotenv');
 const express = require('express');
 const path = require('path');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const { connectDB } = require('./db');
 
 const app = express();
@@ -10,8 +10,10 @@ const PORT = process.env.PORT || 3000;
 
 const downloadsRouter = require('./routers/downloads');
 
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Statically serve the uploads directory
 const uploadDir = process.env.UPLOAD_DIR || 'uploads';

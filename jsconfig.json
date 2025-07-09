@@ -3,7 +3,8 @@
     "baseUrl": ".",
     "module": "commonjs",
     "target": "es2020",
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "allowJs": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules"]

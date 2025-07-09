@@ -17,6 +17,7 @@ dotenvFiles.forEach((file) => {
         override: true,
         debug: NODE_ENV !== 'production',
         quiet: NODE_ENV === 'production',
+        encoding: 'utf8',
       }),
     );
   }
