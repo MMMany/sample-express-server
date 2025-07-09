@@ -1,3 +1,19 @@
 {
-    "editor.tabSize": 2
+  // General Editor Settings
+  "editor.tabSize": 2,
+
+  // Formatting Settings (Enforce Prettier)
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "prettier.configPath": ".prettierrc.json",
+
+  // Linting Settings (Enforce ESLint)
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "eslint.validate": ["javascript"],
+
+  // JavaScript Specific Settings
+  "javascript.suggestionActions.enabled": false,
+  "javascript.validate.enable": true
 }
